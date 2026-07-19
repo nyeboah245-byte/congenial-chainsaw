@@ -83,30 +83,37 @@ squares.forEach((square, index) => {
 square.addEventListener('click', () => {
 // Get the two squares that were clicked
 const square1 = squares[index];
+// FIX: index - 4 and index + 4/+8 can fall outside the 0-15 range
+// depending on which square was clicked, which returned undefined
+// and crashed on .style. Guard against that instead of changing
+// which squares get compared.
 const square2 = squares[index - 4];
+if (!square2) {
+return;
+}
 // Swap the two squares
 swapSquares(square1, square2);
 // Check if the two squares have the same color
 if (areSquaresSameColor(square1, square2)) {
 // If they have the same color, check if the row or column is full of the same color
 const rowOrColumn = [square1, square2];
-// Check if the row is full of the same color if (areSquaresSameColor(square1, square2)) {
-// If they have the same color, check if the row is full of the same color
-const rowOrColumn = [square1, square2];
 // Check if the row is full of the same color
 if (isRowOrColumnFullOfSameColor(rowOrColumn)) {
 // If the row is full of the same color, increment the score
 score++;
 // Update the score element
-scoreElement.textContent = Score: ${score};
+scoreElement.textContent = `Score: ${score}`;
 }
 // Check if the column is full of the same color
-const column = [square1, square2, squares[index + 4], squares[index + 8]];
+const belowSquare = squares[index + 4];
+const bottomSquare = squares[index + 8];
+if (belowSquare && bottomSquare) {
+const column = [square1, square2, belowSquare, bottomSquare];
 if (isRowOrColumnFullOfSameColor(column)) {
 // If the column is full of the same color, increment the score
 score++;
 // Update the score element
-scoreElement.textContent = Score: ${score};
+scoreElement.textContent = `Score: ${score}`;
 }
 }
 }
