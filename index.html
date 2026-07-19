@@ -1,134 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Color Match</title>
+<meta charset="UTF-8">
+<title>Catch the Kente</title>
 <style>
-table {
-border-collapse: collapse;
-}
-th, td {
-border: 1px solid black;
-width: 50px;
-height: 50px;
-}
+body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background:#f0f0f0; }
+#gameCanvas { background:#fff; display:block; margin:auto; border:2px solid #333; }
+#scoreBoard { text-align:center; margin-top:10px; font-size:1.2em; }
 </style>
 </head>
 <body>
-<h1>Color Match</h1>
-<table id="game-grid">
-<tr>
-<td id="square-1" class="square" style="background-color: red;"></td>
-<td id="square-2" class="square" style="background-color: blue;"></td>
-<td id="square-3" class="square" style="background-color: green;"></td>
-<td id="square-4" class="square" style="background-color: yellow;"></td>
-</tr>
-<tr>
-<td id="square-5" class="square" style="background-color: purple;"></td>
-<td id="square-6" class="square" style="background-color: orange;"></td>
-<td id="square-7" class="square" style="background-color: pink;"></td>
-<td id="square-8" class="square" style="background-color: brown;"></td>
-</tr>
-<tr>
-<td id="square-9" class="square" style="background-color: grey;"></td>
-<td id="square-10" class="square" style="background-color: turquoise;"></td>
-<td id="square-11" class="square" style="background-color: lavender;"></td>
-<td id="square-12" class="square" style="background-color: teal;"></td>
-</tr>
-<tr>
-<td id="square-13" class="square" style="background-color: silver;"></td>
-<td id="square-14" class="square" style="background-color: maroon;"></td>
-<td id="square-15" class="square" style="background-color: peach;"></td>
-<td id="square-16" class="square" style="background-color: aqua;"></td>
-</tr>
-</table>
-<p id="score">Score: 0</p>
+<canvas id="gameCanvas" width="600" height="400"></canvas>
+<div id="scoreBoard">Score: 0</div>
 <script>
-// Get all the squares and the score element
-const squares = document.querySelectorAll('.square');
-const scoreElement = document.getElementById('score');
-// Initialize the score to 0
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreBoard = document.getElementById('scoreBoard');
+const basket = { x: canvas.width/2 - 30, y: canvas.height - 30, width: 60, height: 20 };
+const basketSpeed = 7;
+const kenteColors = ['#FF5733','#33FF57','#3357FF','#FF33A1','#A133FF','#33FFF5'];
+let kente = { x: 0, y: 0, size: 30, color: '#000', speed: 3, active: false };
 let score = 0;
-// Function to swap two squares
-function swapSquares(square1, square2) {
-// Get the background colors of the two squares
-const color1 = square1.style.backgroundColor;
-const color2 = square2.style.backgroundColor;
-// Swap the background colors of the two squares
-square1.style.backgroundColor = color2;
-square2.style.backgroundColor = color1;
+let gameOver = false;
+// Utility: random integer between min and max inclusive
+function randInt(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
+// Spawn a new kente piece
+function spawnKente() {
+kente.x = randInt(0, canvas.width - kente.size);
+kente.y = -kente.size;
+kente.color = kenteColors[randInt(0, kenteColors.length-1)];
+kente.speed = randInt(2, 5);
+kente.active = true;
 }
-// Function to check if two squares have the same color
-function areSquaresSameColor(square1, square2) {
-// Get the background colors of the two squares
-const color1 = square1.style.backgroundColor;
-const color2 = square2.style.backgroundColor;
-// Return true if the two squares have the same color, false otherwise
-return color1 === color2;
+// Draw basket
+function drawBasket() {
+ctx.fillStyle = '#8B4513';
+ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
 }
-// Function to check if a row or column is full of the same color
-function isRowOrColumnFullOfSameColor(rowOrColumn) {
-// Get the background color of the first square in the row or column
-const color = rowOrColumn[0].style.backgroundColor;
-// Check if all squares in the row or column have the same color
-for (const square of rowOrColumn) {
-if (square.style.backgroundColor !== color) {
-return false;
+// Draw kente piece
+function drawKente() {
+if (!kente.active) return;
+ctx.fillStyle = kente.color;
+ctx.fillRect(kente.x, kente.y, kente.size, kente.size);
 }
+// Update positions
+function update() {
+if (gameOver) return;
+// Move kente
+if (kente.active) {
+kente.y += kente.speed;
+// Check for catch
+if (kente.y + kente.size >= basket.y &&
+kente.x + kente.size >= basket.x &&
+kente.x <= basket.x + basket.width) {
+score++;
+scoreBoard.textContent = 'Score: ' + score;
+kente.active = false;
+spawnKente();
 }
-// Return true if all squares in the row or column have the same color, false otherwise
-return true;
-}
-// Add event listeners to each square to swap them when clicked
-squares.forEach((square, index) => {
-square.addEventListener('click', () => {
-// Get the two squares that were clicked
-const square1 = squares[index];
-// FIX: index - 4 and index + 4/+8 can fall outside the 0-15 range
-// depending on which square was clicked, which returned undefined
-// and crashed on .style. Guard against that instead of changing
-// which squares get compared.
-const square2 = squares[index - 4];
-if (!square2) {
+// Missed
+else if (kente.y > canvas.height) {
+gameOver = true;
+alert('Game Over! Final score: ' + score);
 return;
 }
-// Swap the two squares
-swapSquares(square1, square2);
-// Check if the two squares have the same color
-if (areSquaresSameColor(square1, square2)) {
-// If they have the same color, check if the row or column is full of the same color
-const rowOrColumn = [square1, square2];
-// Check if the row is full of the same color
-if (isRowOrColumnFullOfSameColor(rowOrColumn)) {
-// If the row is full of the same color, increment the score
-score++;
-// Update the score element
-scoreElement.textContent = `Score: ${score}`;
-}
-// Check if the column is full of the same color
-const belowSquare = squares[index + 4];
-const bottomSquare = squares[index + 8];
-if (belowSquare && bottomSquare) {
-const column = [square1, square2, belowSquare, bottomSquare];
-if (isRowOrColumnFullOfSameColor(column)) {
-// If the column is full of the same color, increment the score
-score++;
-// Update the score element
-scoreElement.textContent = `Score: ${score}`;
+} else {
+// No active kente, spawn after a short delay
+setTimeout(spawnKente, 800);
 }
 }
+// Render loop
+function render() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+drawBasket();
+drawKente();
 }
+// Main loop
+function loop() {
+update();
+render();
+requestAnimationFrame(loop);
+}
+// Keyboard controls
+document.addEventListener('keydown', e => {
+if (e.key === 'ArrowLeft' && basket.x > 0) basket.x -= basketSpeed;
+if (e.key === 'ArrowRight' && basket.x < canvas.width - basket.width) basket.x += basketSpeed;
 });
-});
-// Start the game with a random color for each square
-squares.forEach((square) => {
-const randomColor = getRandomColor();
-square.style.backgroundColor = randomColor;
-});
-// Function to get a random color
-function getRandomColor() {
-const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 'grey', 'turquoise', 'lavender', 'teal', 'silver', 'maroon', 'peach', 'aqua'];
-return colors[Math.floor(Math.random() * colors.length)];
-}
+// Start game
+spawnKente();
+loop();
 </script>
 </body>
 </html>
