@@ -2,93 +2,140 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Catch the Kente</title>
+<title>Guess the Ghanaian Landmark</title>
 <style>
-body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background:#f0f0f0; }
-#gameCanvas { background:#fff; display:block; margin:auto; border:2px solid #333; }
-#scoreBoard { text-align:center; margin-top:10px; font-size:1.2em; }
+body {
+font-family: Arial, sans-serif;
+background: #f0f8ff;
+color: #333;
+max-width: 600px;
+margin: 40px auto;
+padding: 20px;
+border-radius: 8px;
+box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h1 {
+text-align: center;
+color: #006400;
+}
+#image {
+width: 100%;
+height: 300px;
+background-size: cover;
+background-position: center;
+border: 2px solid #006400;
+border-radius: 4px;
+margin-bottom: 15px;
+}
+#feedback {
+margin-top: 10px;
+font-weight: bold;
+}
+#score {
+margin-top: 20px;
+font-size: 1.1em;
+}
+input[type="text"] {
+width: 80%;
+padding: 8px;
+font-size: 1em;
+}
+button {
+padding: 8px 12px;
+font-size: 1em;
+margin-left: 5px;
+background: #006400;
+color: #fff;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+}
+button:hover {
+background: #004d00;
+}
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="600" height="400"></canvas>
-<div id="scoreBoard">Score: 0</div>
+<h1>Guess the Ghanaian Landmark</h1>
+<div id="image"></div>
+<input type="text" id="answer" placeholder="Enter landmark name">
+<button id="submit">Check</button>
+<div id="feedback"></div>
+<div id="score">Score: 0 / 0</div>
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const scoreBoard = document.getElementById('scoreBoard');
-const basket = { x: canvas.width/2 - 30, y: canvas.height - 30, width: 60, height: 20 };
-const basketSpeed = 7;
-const kenteColors = ['#FF5733','#33FF57','#3357FF','#FF33A1','#A133FF','#33FFF5'];
-let kente = { x: 0, y: 0, size: 30, color: '#000', speed: 3, active: false };
+// List of landmarks – image URLs are public domain or Creative Commons.
+const landmarks = [
+{
+name: "Cape Coast Castle",
+img: "https://upload.wikimedia.org/wikipedia/commons/9/96/Cape_Coast_Castle_2020.jpg"
+},
+{
+name: "Kakum National Park",
+img: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Kakum_Canopy_Walkway.jpg"
+},
+{
+name: "Lake Volta",
+img: "https://upload.wikimedia.org/wikipedia/commons/2/2c/Lake_Volta_Aerial.jpg"
+},
+{
+name: "Kwame Nkrumah Mausoleum",
+img: "https://upload.wikimedia.org/wikipedia/commons/8/8c/Kwame_Nkrumah_Mausoleum_Accra.jpg"
+},
+{
+name: "Wli Waterfalls",
+img: "https://upload.wikimedia.org/wikipedia/commons/3/33/Wli_Falls_2019.jpg"
+}
+];
+let currentIndex = -1;
 let score = 0;
-let gameOver = false;
-// Utility: random integer between min and max inclusive
-function randInt(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
-// Spawn a new kente piece
-function spawnKente() {
-kente.x = randInt(0, canvas.width - kente.size);
-kente.y = -kente.size;
-kente.color = kenteColors[randInt(0, kenteColors.length-1)];
-kente.speed = randInt(2, 5);
-kente.active = true;
+let total = 0;
+const imageDiv = document.getElementById('image');
+const answerInput = document.getElementById('answer');
+const feedbackDiv = document.getElementById('feedback');
+const scoreDiv = document.getElementById('score');
+const submitBtn = document.getElementById('submit');
+function loadNext() {
+// Shuffle if we have gone through all items
+if (total % landmarks.length === 0) {
+shuffleArray(landmarks);
 }
-// Draw basket
-function drawBasket() {
-ctx.fillStyle = '#8B4513';
-ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+currentIndex = (currentIndex + 1) % landmarks.length;
+imageDiv.style.backgroundImage = url('${landmarks[currentIndex].img}');
+answerInput.value = '';
+answerInput.focus();
+feedbackDiv.textContent = '';
 }
-// Draw kente piece
-function drawKente() {
-if (!kente.active) return;
-ctx.fillStyle = kente.color;
-ctx.fillRect(kente.x, kente.y, kente.size, kente.size);
-}
-// Update positions
-function update() {
-if (gameOver) return;
-// Move kente
-if (kente.active) {
-kente.y += kente.speed;
-// Check for catch
-if (kente.y + kente.size >= basket.y &&
-kente.x + kente.size >= basket.x &&
-kente.x <= basket.x + basket.width) {
+function checkAnswer() {
+const userAnswer = answerInput.value.trim().toLowerCase();
+const correct = landmarks[currentIndex].name.toLowerCase();
+total++;
+if (userAnswer === correct) {
 score++;
-scoreBoard.textContent = 'Score: ' + score;
-kente.active = false;
-spawnKente();
-}
-// Missed
-else if (kente.y > canvas.height) {
-gameOver = true;
-alert('Game Over! Final score: ' + score);
-return;
-}
+feedbackDiv.textContent = "Correct! 🎉";
+feedbackDiv.style.color = "#006400";
 } else {
-// No active kente, spawn after a short delay
-setTimeout(spawnKente, 800);
+feedbackDiv.textContent = Wrong. The answer is "${landmarks[currentIndex].name}".;
+feedbackDiv.style.color = "#b22222";
 }
+scoreDiv.textContent = Score: ${score} / ${total};
+// Short pause before next image
+setTimeout(loadNext, 1500);
 }
-// Render loop
-function render() {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-drawBasket();
-drawKente();
+submitBtn.addEventListener('click', checkAnswer);
+answerInput.addEventListener('keypress', function(e) {
+if (e.key === 'Enter') {
+checkAnswer();
 }
-// Main loop
-function loop() {
-update();
-render();
-requestAnimationFrame(loop);
-}
-// Keyboard controls
-document.addEventListener('keydown', e => {
-if (e.key === 'ArrowLeft' && basket.x > 0) basket.x -= basketSpeed;
-if (e.key === 'ArrowRight' && basket.x < canvas.width - basket.width) basket.x += basketSpeed;
 });
-// Start game
-spawnKente();
-loop();
+function shuffleArray(arr) {
+for (let i = arr.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[arr[i], arr[j]] = [arr[j], arr[i]];
+}
+}
+// Initialise first round
+shuffleArray(landmarks);
+loadNext();
 </script>
 </body>
 </html>
