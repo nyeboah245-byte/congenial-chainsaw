@@ -2,140 +2,131 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Guess the Ghanaian Landmark</title>
+<title>Snake – Simple Canvas Game</title>
 <style>
-body {
-font-family: Arial, sans-serif;
-background: #f0f8ff;
-color: #333;
-max-width: 600px;
-margin: 40px auto;
-padding: 20px;
-border-radius: 8px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-h1 {
-text-align: center;
-color: #006400;
-}
-#image {
-width: 100%;
-height: 300px;
-background-size: cover;
-background-position: center;
-border: 2px solid #006400;
-border-radius: 4px;
-margin-bottom: 15px;
-}
-#feedback {
-margin-top: 10px;
-font-weight: bold;
-}
-#score {
-margin-top: 20px;
-font-size: 1.1em;
-}
-input[type="text"] {
-width: 80%;
-padding: 8px;
-font-size: 1em;
-}
-button {
-padding: 8px 12px;
-font-size: 1em;
-margin-left: 5px;
-background: #006400;
-color: #fff;
-border: none;
-border-radius: 4px;
-cursor: pointer;
-}
-button:hover {
-background: #004d00;
-}
+  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#222; color:#fff; text-align:center; }
+  canvas { background:#111; display:block; margin:20px auto; }
+  #score { font-size:1.2em; }
 </style>
 </head>
 <body>
-<h1>Guess the Ghanaian Landmark</h1>
-<div id="image"></div>
-<input type="text" id="answer" placeholder="Enter landmark name">
-<button id="submit">Check</button>
-<div id="feedback"></div>
-<div id="score">Score: 0 / 0</div>
+<h1>Snake</h1>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+<div id="score">Score: 0</div>
+
 <script>
-// List of landmarks – image URLs are public domain or Creative Commons.
-const landmarks = [
-{
-name: "Cape Coast Castle",
-img: "https://upload.wikimedia.org/wikipedia/commons/9/96/Cape_Coast_Castle_2020.jpg"
-},
-{
-name: "Kakum National Park",
-img: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Kakum_Canopy_Walkway.jpg"
-},
-{
-name: "Lake Volta",
-img: "https://upload.wikimedia.org/wikipedia/commons/2/2c/Lake_Volta_Aerial.jpg"
-},
-{
-name: "Kwame Nkrumah Mausoleum",
-img: "https://upload.wikimedia.org/wikipedia/commons/8/8c/Kwame_Nkrumah_Mausoleum_Accra.jpg"
-},
-{
-name: "Wli Waterfalls",
-img: "https://upload.wikimedia.org/wikipedia/commons/3/33/Wli_Falls_2019.jpg"
-}
-];
-let currentIndex = -1;
+/* ------------------ Configuration ------------------ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const cellSize = 20;                     // size of one grid cell in pixels
+const canvasSize = canvas.width;         // assume square canvas
+const gridCount = canvasSize / cellSize; // number of cells per side
+const initialSpeed = 150;                // ms per frame
+
+/* ------------------ Game State ------------------ */
+let snake = [{x:5, y:5}];                // array of segments, head first
+let direction = {x:1, y:0};              // moving right initially
+let food = null;
 let score = 0;
-let total = 0;
-const imageDiv = document.getElementById('image');
-const answerInput = document.getElementById('answer');
-const feedbackDiv = document.getElementById('feedback');
-const scoreDiv = document.getElementById('score');
-const submitBtn = document.getElementById('submit');
-function loadNext() {
-// Shuffle if we have gone through all items
-if (total % landmarks.length === 0) {
-shuffleArray(landmarks);
+let gameInterval = null;
+
+/* ------------------ Helper Functions ------------------ */
+function randomCell() {
+  return {
+    x: Math.floor(Math.random() * gridCount),
+    y: Math.floor(Math.random() * gridCount)
+  };
 }
-currentIndex = (currentIndex + 1) % landmarks.length;
-imageDiv.style.backgroundImage = url('${landmarks[currentIndex].img}');
-answerInput.value = '';
-answerInput.focus();
-feedbackDiv.textContent = '';
+
+function placeFood() {
+  let newFood;
+  do {
+    newFood = randomCell();
+  } while (snake.some(seg => seg.x === newFood.x && seg.y === newFood.y));
+  food = newFood;
 }
-function checkAnswer() {
-const userAnswer = answerInput.value.trim().toLowerCase();
-const correct = landmarks[currentIndex].name.toLowerCase();
-total++;
-if (userAnswer === correct) {
-score++;
-feedbackDiv.textContent = "Correct! 🎉";
-feedbackDiv.style.color = "#006400";
-} else {
-feedbackDiv.textContent = Wrong. The answer is "${landmarks[currentIndex].name}".;
-feedbackDiv.style.color = "#b22222";
+
+function drawCell(x, y, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
 }
-scoreDiv.textContent = Score: ${score} / ${total};
-// Short pause before next image
-setTimeout(loadNext, 1500);
+
+function drawSnake() {
+  snake.forEach((seg, index) => {
+    drawCell(seg.x, seg.y, index === 0 ? '#0f0' : '#0a0');
+  });
 }
-submitBtn.addEventListener('click', checkAnswer);
-answerInput.addEventListener('keypress', function(e) {
-if (e.key === 'Enter') {
-checkAnswer();
+
+function drawFood() {
+  drawCell(food.x, food.y, '#f00');
 }
+
+function update() {
+  // calculate new head position
+  const newHead = {
+    x: snake[0].x + direction.x,
+    y: snake[0].y + direction.y
+  };
+
+  // wrap around edges
+  if (newHead.x < 0) newHead.x = gridCount - 1;
+  if (newHead.x >= gridCount) newHead.x = 0;
+  if (newHead.y < 0) newHead.y = gridCount - 1;
+  if (newHead.y >= gridCount) newHead.y = 0;
+
+  // check collision with self
+  if (snake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
+    clearInterval(gameInterval);
+    alert('Game over! Your score: ' + score);
+    return;
+  }
+
+  // add new head
+  snake.unshift(newHead);
+
+  // check food
+  if (newHead.x === food.x && newHead.y === food.y) {
+    score += 1;
+    document.getElementById('score').textContent = 'Score: ' + score;
+    placeFood();
+  } else {
+    // remove tail
+    snake.pop();
+  }
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvasSize, canvasSize);
+  drawFood();
+  drawSnake();
+}
+
+function gameLoop() {
+  update();
+  render();
+}
+
+/* ------------------ Input Handling ------------------ */
+document.addEventListener('keydown', e => {
+  switch (e.key) {
+    case 'ArrowUp':
+      if (direction.y !== 1) direction = {x:0, y:-1};
+      break;
+    case 'ArrowDown':
+      if (direction.y !== -1) direction = {x:0, y:1};
+      break;
+    case 'ArrowLeft':
+      if (direction.x !== 1) direction = {x:-1, y:0};
+      break;
+    case 'ArrowRight':
+      if (direction.x !== -1) direction = {x:1, y:0};
+      break;
+  }
 });
-function shuffleArray(arr) {
-for (let i = arr.length - 1; i > 0; i--) {
-const j = Math.floor(Math.random() * (i + 1));
-[arr[i], arr[j]] = [arr[j], arr[i]];
-}
-}
-// Initialise first round
-shuffleArray(landmarks);
-loadNext();
+
+/* ------------------ Start Game ------------------ */
+placeFood();
+gameInterval = setInterval(gameLoop, initialSpeed);
 </script>
 </body>
 </html>
