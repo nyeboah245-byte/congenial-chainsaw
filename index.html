@@ -1,132 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Snake – Simple Canvas Game</title>
-<style>
-  body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#222; color:#fff; text-align:center; }
-  canvas { background:#111; display:block; margin:20px auto; }
-  #score { font-size:1.2em; }
-</style>
+    <meta charset="UTF-8">
+    <title>Catch the Dot</title>
+    <style>
+        body {
+            margin: 0;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background: #ffffff;
+            border: 2px solid #333;
+        }
+    </style>
 </head>
 <body>
-<h1>Snake</h1>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
-<div id="score">Score: 0</div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
 
-<script>
-/* ------------------ Configuration ------------------ */
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const cellSize = 20;                     // size of one grid cell in pixels
-const canvasSize = canvas.width;         // assume square canvas
-const gridCount = canvasSize / cellSize; // number of cells per side
-const initialSpeed = 150;                // ms per frame
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-/* ------------------ Game State ------------------ */
-let snake = [{x:5, y:5}];                // array of segments, head first
-let direction = {x:1, y:0};              // moving right initially
-let food = null;
-let score = 0;
-let gameInterval = null;
+        const player = { x: 180, y: 180, size: 30, speed: 4 };
+        const target = { x: 0, y: 0, size: 20 };
+        let score = 0;
+        const keys = {};
 
-/* ------------------ Helper Functions ------------------ */
-function randomCell() {
-  return {
-    x: Math.floor(Math.random() * gridCount),
-    y: Math.floor(Math.random() * gridCount)
-  };
-}
+        // place the target at a random location inside the canvas
+        function resetTarget() {
+            target.x = Math.random() * (canvas.width - target.size);
+            target.y = Math.random() * (canvas.height - target.size);
+        }
 
-function placeFood() {
-  let newFood;
-  do {
-    newFood = randomCell();
-  } while (snake.some(seg => seg.x === newFood.x && seg.y === newFood.y));
-  food = newFood;
-}
+        // handle keyboard presses
+        window.addEventListener('keydown', e => { keys[e.key] = true; });
+        window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-function drawCell(x, y, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-}
+        function update() {
+            // move player based on arrow keys
+            if (keys.ArrowUp)    player.y -= player.speed;
+            if (keys.ArrowDown)  player.y += player.speed;
+            if (keys.ArrowLeft)  player.x -= player.speed;
+            if (keys.ArrowRight) player.x += player.speed;
 
-function drawSnake() {
-  snake.forEach((seg, index) => {
-    drawCell(seg.x, seg.y, index === 0 ? '#0f0' : '#0a0');
-  });
-}
+            // keep player inside canvas bounds
+            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
-function drawFood() {
-  drawCell(food.x, food.y, '#f00');
-}
+            // check collision with the target (simple AABB test)
+            if (player.x < target.x + target.size &&
+                player.x + player.size > target.x &&
+                player.y < target.y + target.size &&
+                player.y + player.size > target.y) {
+                score++;
+                resetTarget();
+            }
+        }
 
-function update() {
-  // calculate new head position
-  const newHead = {
-    x: snake[0].x + direction.x,
-    y: snake[0].y + direction.y
-  };
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // wrap around edges
-  if (newHead.x < 0) newHead.x = gridCount - 1;
-  if (newHead.x >= gridCount) newHead.x = 0;
-  if (newHead.y < 0) newHead.y = gridCount - 1;
-  if (newHead.y >= gridCount) newHead.y = 0;
+            // draw player (blue square)
+            ctx.fillStyle = '#0066ff';
+            ctx.fillRect(player.x, player.y, player.size, player.size);
 
-  // check collision with self
-  if (snake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
-    clearInterval(gameInterval);
-    alert('Game over! Your score: ' + score);
-    return;
-  }
+            // draw target (red circle)
+            ctx.fillStyle = '#ff3300';
+            ctx.beginPath();
+            ctx.arc(target.x + target.size / 2, target.y + target.size / 2,
+                    target.size / 2, 0, Math.PI * 2);
+            ctx.fill();
 
-  // add new head
-  snake.unshift(newHead);
+            // draw score
+            ctx.fillStyle = '#000';
+            ctx.font = '16px Arial';
+            ctx.fillText('Score: ' + score, 10, 20);
+        }
 
-  // check food
-  if (newHead.x === food.x && newHead.y === food.y) {
-    score += 1;
-    document.getElementById('score').textContent = 'Score: ' + score;
-    placeFood();
-  } else {
-    // remove tail
-    snake.pop();
-  }
-}
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
 
-function render() {
-  ctx.clearRect(0, 0, canvasSize, canvasSize);
-  drawFood();
-  drawSnake();
-}
-
-function gameLoop() {
-  update();
-  render();
-}
-
-/* ------------------ Input Handling ------------------ */
-document.addEventListener('keydown', e => {
-  switch (e.key) {
-    case 'ArrowUp':
-      if (direction.y !== 1) direction = {x:0, y:-1};
-      break;
-    case 'ArrowDown':
-      if (direction.y !== -1) direction = {x:0, y:1};
-      break;
-    case 'ArrowLeft':
-      if (direction.x !== 1) direction = {x:-1, y:0};
-      break;
-    case 'ArrowRight':
-      if (direction.x !== -1) direction = {x:1, y:0};
-      break;
-  }
-});
-
-/* ------------------ Start Game ------------------ */
-placeFood();
-gameInterval = setInterval(gameLoop, initialSpeed);
-</script>
+        // initialise
+        resetTarget();
+        requestAnimationFrame(loop);
+    </script>
 </body>
 </html>
