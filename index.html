@@ -78,6 +78,7 @@
         // ---------- Game state ----------
         let score = 0;
         const keys = {};
+        let gameOver = false;
 
         // ---------- Utility ----------
         function resetTarget() {
@@ -96,6 +97,8 @@
 
         // ---------- Core logic ----------
         function update() {
+            if (gameOver) return;
+
             // Move player
             if (keys.ArrowUp)    player.y -= player.speed;
             if (keys.ArrowDown)  player.y += player.speed;
@@ -114,7 +117,7 @@
                 if (ob.dir === -1 && ob.x + ob.width < 0) ob.x = canvas.width;
             });
 
-            // Collision: player ↔ target
+            // Collision: player target
             if (player.x < target.x + target.size &&
                 player.x + player.size > target.x &&
                 player.y < target.y + target.size &&
@@ -131,7 +134,7 @@
                 }
             }
 
-            // Collision: player ↔ any obstacle
+            // Collision: player obstacle
             for (let ob of obstacles) {
                 if (player.x < ob.x + ob.width &&
                     player.x + player.size > ob.x &&
@@ -140,9 +143,8 @@
                     player.lives--;
                     resetPlayer();
                     if (player.lives <= 0) {
-                        // Game over
+                        gameOver = true;
                         document.getElementById('gameOver').style.display = 'block';
-                        cancelAnimationFrame(animationId);
                     }
                     break; // only handle one hit per frame
                 }
@@ -150,8 +152,21 @@
         }
 
         // ---------- Rendering ----------
+        let backgroundImg = new Image();
+        backgroundImg.src = 'your_background_image_file_name_here.png'; // replace with your background image file name
+
         function draw() {
+            if (gameOver) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background image
+            if (backgroundImg.complete) {
+                ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
             // Draw player
             ctx.fillStyle = '#0066ff';
@@ -181,11 +196,10 @@
         }
 
         // ---------- Game loop ----------
-        let animationId;
         function loop() {
             update();
             draw();
-            animationId = requestAnimationFrame(loop);
+            requestAnimationFrame(loop);
         }
 
         // ---------- Start ----------
